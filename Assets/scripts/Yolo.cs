@@ -17,6 +17,12 @@ public class Yolo : MonoBehaviour
     Worker worker;
     Tensor<float> inputTensor;
     //Tensor<float> inputTensor;
+    public struct ClassificationResult
+    {
+        public int ClassID;      
+        public float Probability; 
+    }
+
     void Awake()
     {
         runtimeModel = ModelLoader.Load(modelAsset);
@@ -66,17 +72,26 @@ public class Yolo : MonoBehaviour
                 int numClasses = cpuTensor.shape[1] - 5;
                 int bestClassID = -1;
                 float maxClassScore = 0.0f;
-                for (int k = 0; k < numClasses; k++)
+                if (numClasses == 1)
                 {
-                    float classScore = cpuTensor[0, 5 + k, i]; // »звлекаем веро€тность дл€ класса c
-                    if (classScore > maxClassScore)
-                    {
-                        maxClassScore = classScore;
-                        bestClassID = k+1;
-                    }
+                    maxClassScore = 1.0f / (1.0f + Mathf.Exp(-cpuTensor[0, 5, i]));
+                    bestClassID = 1;
                 }
-                Debug.Log("Max Class Score: " + maxClassScore);
-                bestClassID = (maxClassScore > 0.5f) ? bestClassID : 0;
+                else
+                {
+                    float[] logits = new float[numClasses];
+                    for (int k = 0; k < numClasses; k++)
+                    {
+                        logits[k] = cpuTensor[0, 5 + k, i];
+                    }
+                    var result    =   GetBestClass(logits);
+                    bestClassID   =   result.ClassID ;
+                    maxClassScore =   result.Probability;
+
+                }
+
+                Debug.Log("max class score: " + maxClassScore);
+                bestClassID = (maxClassScore > 0.55f) ? bestClassID : 0;
                 Debug.Log($"Object detected with confidence {confidence}: " +
                           $"(x_center: {x_center}, y_center: {y_center}, width: {width}, height: {height}, classID: {bestClassID})");
 
@@ -84,7 +99,7 @@ public class Yolo : MonoBehaviour
                 {
                     place=cam.ScreenToWorldPoint(new Vector3(x_center, y_center, CalculateDistance(height, 0.12f, cam))),
                     box = new Rect(x_center - width / 2, y_center - height / 2, width, height),
-                    classID = bestClassID, // «десь можно указать ваш classID, если есть данные дл€ его вычислени€
+                    classID = bestClassID, 
                     score = confidence,
                 };
 
@@ -145,32 +160,46 @@ public class Yolo : MonoBehaviour
         float distance = realSizeMeters / (relativeScreenHeight * screenHeightAtOneMeter);
         return distance;
     }
-    //то что внизу потом уберу это не должно тут лежать
-    //public void DrawBox(Rect rect, float depth)
-    //{
-    //    //Vector3 leftBottom, leftTop, rightBottom, rightTop, center;
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="logits"> веро€тность что это {1 класс, 2 класс, ...}</param>
+    /// <returns></returns>
+    public static ClassificationResult GetBestClass(float[] logits)
+    {
+        int numClasses = logits.Length;
+        float maxProbability = 0.0f;
+        int bestClassID = -1;
+
+        // ¬ычисл€ем softmax дл€ логитов и находим максимальную веро€тность
+        float sumExp = 0.0f;
+        float[] probabilities = new float[numClasses];
+
+        // —читаем сумму экспонент
+        for (int i = 0; i < numClasses; i++)
+        {
+            probabilities[i] = Mathf.Exp(logits[i]);
+            sumExp += probabilities[i];
+        }
+
+        // Ќормализуем и находим класс с максимальной веро€тностью
+        for (int i = 0; i < numClasses; i++)
+        {
+            probabilities[i] /= sumExp;
+            if (probabilities[i] > maxProbability)
+            {
+                maxProbability = probabilities[i];
+                bestClassID = i;
+            }
+        }
+
+        return new ClassificationResult
+        {
+            ClassID = bestClassID + 1,  
+            Probability = maxProbability
+        };
+    }
 
 
-    //    //leftBottom = cam.ScreenToWorldPoint(new Vector3(rect.xMin, rect.yMin, cam.nearClipPlane));
-    //    //leftTop = cam.ScreenToWorldPoint(new Vector3(rect.xMin, rect.yMax, cam.nearClipPlane));
-    //    //rightBottom = cam.ScreenToWorldPoint(new Vector3(rect.xMax, rect.yMin, cam.nearClipPlane));
-    //    //rightTop = cam.ScreenToWorldPoint(new Vector3(rect.xMax, rect.yMax, cam.nearClipPlane));
-    //    Vector3 center = cam.ScreenToWorldPoint(new Vector3(rect.center.x * (float)Screen.width / currentImage.width, rect.center.y * (float)Screen.height / currentImage.height, depth));
-    //    Debug.Log($"BB centerY: {rect.center.y} minY: {rect.yMin} maxY: {rect.yMax}");
-    //    Instantiate(box, center, Quaternion.identity);
-
-
-    //}
-
-
-    //void SaveTextureAsPNG(Texture2D texture, string fileNamePrefix)
-    //{
-    //    byte[] bytes = texture.EncodeToPNG();
-    //    string timestamp = DateTime.Now.ToString("HHmmss");
-    //    string uniqueFileName = $"{fileNamePrefix}_{timestamp}.png";
-    //    string filePath = Path.Combine(Application.persistentDataPath, uniqueFileName);
-    //    File.WriteAllBytes(filePath, bytes);
-    //    Debug.Log($"Image saved to: {filePath}");
-    //}
 
 }
