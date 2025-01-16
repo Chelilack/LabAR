@@ -59,39 +59,34 @@ public class Yolo : MonoBehaviour
         var cpuTensor = outputTensor.ReadbackAndClone();
         Debug.Log("bool: " + outputTensor.IsReadbackRequestDone());
         Debug.Log("000: " + cpuTensor.shape);
+        int numClasses = cpuTensor.shape[1] - 4;
         List<Detection> detections = new List<Detection>();
+        //string output = "class 1 : ";
         for (int i = 0; i < 8400; i++)
         {
             float x_center   = cpuTensor[0, 0, i] * (Screen.width   / 640f);
             float y_center   = cpuTensor[0, 1, i] * (Screen.height  / 640f);
             float width      = cpuTensor[0, 2, i] * (Screen.width   / 640f);
             float height     = cpuTensor[0, 3, i] * (Screen.height  / 640f);
-            float confidence = cpuTensor[0, 4, i];
+
+            float confidence = Enumerable.Range(4, numClasses) // Генерируем последовательность индексов i от 5 до numclasses
+            .Select(k => cpuTensor[0, k, i]) // Извлекаем значение cpuTensor[0, i, 4]
+            .Max();
+
+            //output += $" {cpuTensor[0, 5, i]},";
+            //if (cpuTensor[0, 4, i] > 0.5f) Debug.Log("wow" + cpuTensor[0, 4, i] + "i: "+ i);
+            //if (cpuTensor[0, 5, i] > 0.5f) Debug.Log("class 1 " + cpuTensor[0, 5, i] + " i: "+ i + " confidence: " + cpuTensor[0, 4, i]);
+            // Находим максимальное значение
+
             if (confidence > 0.5f)
             {
-                int numClasses = cpuTensor.shape[1] - 5;
-                int bestClassID = -1;
-                float maxClassScore = 0.0f;
-                if (numClasses == 1)
-                {
-                    maxClassScore = 1.0f / (1.0f + Mathf.Exp(-cpuTensor[0, 5, i]));
-                    bestClassID = 1;
-                }
-                else
-                {
-                    float[] logits = new float[numClasses];
-                    for (int k = 0; k < numClasses; k++)
-                    {
-                        logits[k] = cpuTensor[0, 5 + k, i];
-                    }
-                    var result    =   GetBestClass(logits);
-                    bestClassID   =   result.ClassID ;
-                    maxClassScore =   result.Probability;
+                int bestClassID = Enumerable.Range(4, numClasses)
+                .Select(k => cpuTensor[0, k, i])
+                .ToList().IndexOf(confidence);
+              
 
-                }
-
-                Debug.Log("max class score: " + maxClassScore);
-                bestClassID = (maxClassScore > 0.55f) ? bestClassID : 0;
+                //Debug.Log("max class score: " + confidence);
+                //bestClassID = (confidence > 0.5f) ? bestClassID : 0;
                 Debug.Log($"Object detected with confidence {confidence}: " +
                           $"(x_center: {x_center}, y_center: {y_center}, width: {width}, height: {height}, classID: {bestClassID})");
 
@@ -106,6 +101,7 @@ public class Yolo : MonoBehaviour
                 detections.Add(detection);
             }
         }
+        //Debug.Log(output);
         if (detections.Count == 0)
         {
             Debug.Log("nu ne to");
@@ -117,7 +113,10 @@ public class Yolo : MonoBehaviour
              .GroupBy(d => d.classID)
              .Select(g => g.OrderByDescending(d => d.score).First())
              .ToArray();
-            Debug.Log("best: " + currentResult[0].score);
+            for (int i = 0; i < numClasses; i++)
+            {
+                Debug.Log($"best {i} class: {currentResult[i].score}");
+            }
         }
         Debug.Log("wasted time: " + (float)(Time.realtimeSinceStartup - start));
         ready = true;
