@@ -27,7 +27,7 @@ public class Yolo : MonoBehaviour
     {
         runtimeModel = ModelLoader.Load(modelAsset);
         worker = new Worker(runtimeModel, BackendType.GPUCompute); 
-        var answer = Detect(example);
+        //var answer = Detect(example);
 
 
         //Tensor inputTensor = TransformInputToTensor(example);
@@ -92,7 +92,7 @@ public class Yolo : MonoBehaviour
 
                 Detection detection = new Detection
                 {
-                    place=cam.ScreenToWorldPoint(new Vector3(x_center, y_center, CalculateDistance(height, 0.12f, cam))),
+                    place=cam.ScreenToWorldPoint(new Vector3(x_center, y_center, CalculateDistance(height, 0.15f, cam))),
                     box = new Rect(x_center - width / 2, y_center - height / 2, width, height),
                     classID = bestClassID, 
                     score = confidence,

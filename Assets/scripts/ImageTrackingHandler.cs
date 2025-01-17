@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections;
 using Unity.Collections;
 using TMPro;
+using System.Linq;
 using System.IO;
 using Unity.Sentis;
 
@@ -30,6 +31,7 @@ public class ImageTrackingHandler : MonoBehaviour
     public Yolo yolo;
     [SerializeField] private bool test;
     [SerializeField] private Texture2D example;
+    private GameObject[] created; // РґР»СЏ РґРѕР±Р°РІР»РµРЅРЅС‹С… РЅР° СЃС†РµРЅСѓ СЌР»РµРјРµРЅС‚РѕРІ, С‡С‚РѕР±С‹ РµС‰Рµ СЂР°Р· РЅРµ РґРѕР±Р°РІР»СЏС‚СЊ
 
     public class DetectedObject
     {
@@ -92,7 +94,7 @@ public class ImageTrackingHandler : MonoBehaviour
         cameraManager = GetComponentInChildren<ARCameraManager>();
         if (!yolo || !_trackedImageManager || objectToPrefabMap == null || !cameraManager) 
         {
-            Debug.Log("яяяяяяяяяяя");
+            Debug.Log("СЏСЏСЏСЏСЏСЏСЏСЏСЏСЏСЏ");
         }
         foreach (var objectPrefab in objectPrefabList)
         {
@@ -175,6 +177,7 @@ public class ImageTrackingHandler : MonoBehaviour
 
     IEnumerator CallDetectEveryFiveSeconds()
     {
+
         while (true)
         {
             Debug.Log("Processing frame for detection");
@@ -184,35 +187,32 @@ public class ImageTrackingHandler : MonoBehaviour
             {
 
                 isProcessing = true;
-                // Преобразование изображения в формат, подходящий для tflite модели
-                //latestImage = !test ? ConvertImageToTexture2D(latestCpuImage):example;
                 latestImage = !test ? ConvertImageToTexture2D(latestCpuImage):example;
                 if (latestImage.height < latestImage.width && !test) latestImage = Rotate90(latestImage);
                 Debug.Log($"height: {latestImage.height} width: {latestImage.width}");
 
-                //latestImage=ResizeWithBlit(latestImage,640,640);
-                //SaveTextureAsPNG(latestImage,"yolo2.png");
-
-                //SaveTextureAsRaw(latestImage,"yolo2.png");
-                // Сохранение изображения
-                //SaveTextureAsPNG(latestImage, "LatestImage.png");
-
-                // Выполнение обнаружения объектов
-                //var detectedObjects = detectionScript.Detect(latestImage);
                 var detectedObjects = yolo.Detect(latestImage);
-                Debug.Log("uuuuaaaaaaaa: " + detectedObjects);
                 while (!yolo.ready)
                 {
                     yield return null;
                 }
                 Debug.Log(yolo.ready);
-                Debug.Log("uuuuuuuuuuu");
-                if (detectedObjects != null && detectedObjects.Length != 0)
+                //created = detectedObjects.Length != 0 ? new GameObject[detectedObjects.Length] : null ;
+                if (detectedObjects != null && detectedObjects.Length != 0)// && detectedObjects.Length != created.Length) // РЅР°РґРѕ Р±СѓРґРµС‚ РёСЃРїСЂР°РІРёС‚СЊ СЌС‚Рѕ РґР»СЏ С‚РµСЃС‚Р° 
                 {
-                    Instantiate(objectToPrefabMap["first"], detectedObjects[0].place+new Vector3(0f,0f,0.1f), Quaternion.identity);
-                    //detectionScript.PrintDetections(detectedObjects);
-                    Debug.Log("distance: "+ detectedObjects[0].place.z);
                     Debug.Log($"Detected {detectedObjects.Length} objects");
+                    string[] label = objectToPrefabMap.Keys.ToArray();
+                    for (int i=0; i < detectedObjects.Length;i++) 
+                    {
+                        //created[i] = 
+                        Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], detectedObjects[i].place + new Vector3(0f, 0f, 0.1f), Quaternion.identity);
+
+
+
+                        //detectionScript.PrintDetections(detectedObjects);
+                        Debug.Log("distance: " + detectedObjects[0].place.z);
+                    }
+                    
                     detectedObjects = null;
                 }
                 latestCpuImage.Dispose();
@@ -267,57 +267,17 @@ public class ImageTrackingHandler : MonoBehaviour
         return texture;
     }
 
-    Texture2D ResizeWithBlit(Texture2D source, int width, int height)
-    {
-        RenderTexture rt = new RenderTexture(width, height, 32);
-        RenderTexture.active = rt;
-
-        Graphics.Blit(source, rt);
-
-        Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        result.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        result.Apply();
-
-        RenderTexture.active = null;
-        rt.Release();
-        return result;
-    }
-
-    void SaveTextureAsPNG(Texture2D texture, string fileNamePrefix)
-    {
-        byte[] bytes = texture.EncodeToPNG();
-        string timestamp = DateTime.Now.ToString("HHmmss");
-        string uniqueFileName = $"{fileNamePrefix}_{timestamp}.png";
-        string filePath = Path.Combine(Application.persistentDataPath, uniqueFileName);
-        File.WriteAllBytes(filePath, bytes);
-        Debug.Log($"Image saved to: {filePath}");
-    }
-    void SaveTextureAsRaw(Texture2D texture, string fileNamePrefix)
-    {
-        // Получить сырые байты текстуры
-        byte[] rawBytes = texture.GetRawTextureData();
-
-        // Создать уникальное имя файла
-        string timestamp = DateTime.Now.ToString("HHmmss");
-        string uniqueFileName = $"{fileNamePrefix}_{timestamp}.raw";
-        string filePath = Path.Combine(Application.persistentDataPath, uniqueFileName);
-
-        // Сохранить сырые байты в файл
-        File.WriteAllBytes(filePath, rawBytes);
-
-        Debug.Log($"Raw texture saved to: {filePath}");
-    }
     void OnImageChanged(ARTrackedImagesChangedEventArgs eventArgs)
     {
         foreach (ARTrackedImage addedImage in eventArgs.added)
         {
-            // Создайте экземпляр объекта на месте добавленного изображения
+            // РЎРѕР·РґР°Р№С‚Рµ СЌРєР·РµРјРїР»СЏСЂ РѕР±СЉРµРєС‚Р° РЅР° РјРµСЃС‚Рµ РґРѕР±Р°РІР»РµРЅРЅРѕРіРѕ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ
             InstantiateObjectAtImage(addedImage);
         }
 
         foreach (ARTrackedImage removedImage in eventArgs.removed)
         {
-            // При необходимости удалите или скройте объект, если изображение больше не отслеживается
+            // РџСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё СѓРґР°Р»РёС‚Рµ РёР»Рё СЃРєСЂРѕР№С‚Рµ РѕР±СЉРµРєС‚, РµСЃР»Рё РёР·РѕР±СЂР°Р¶РµРЅРёРµ Р±РѕР»СЊС€Рµ РЅРµ РѕС‚СЃР»РµР¶РёРІР°РµС‚СЃСЏ
             HandleRemovedImage(removedImage);
         }
     }
@@ -328,18 +288,11 @@ public class ImageTrackingHandler : MonoBehaviour
         {
             GameObject instantiatedObject = Instantiate(prefab, trackedImage.transform.position, trackedImage.transform.rotation);
 
-            // Прикрепляем объект к изображению и устанавливаем localPosition и localRotation в ноль
+            // РџСЂРёРєСЂРµРїР»СЏРµРј РѕР±СЉРµРєС‚ Рє РёР·РѕР±СЂР°Р¶РµРЅРёСЋ Рё СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј localPosition Рё localRotation РІ РЅРѕР»СЊ
             instantiatedObject.transform.SetParent(trackedImage.transform, false);
             instantiatedObject.transform.localPosition = Vector3.zero;
             instantiatedObject.transform.localRotation = Quaternion.identity;
         }
-    }
-
-    void UpdateObjectAtImage(ARTrackedImage trackedImage)
-    {
-        Transform existingObject = trackedImage.transform.GetChild(0);
-        existingObject.position = trackedImage.transform.position;
-        existingObject.rotation = trackedImage.transform.rotation;
     }
 
     void HandleRemovedImage(ARTrackedImage trackedImage)
