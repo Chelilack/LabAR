@@ -32,7 +32,8 @@ public class ImageTrackingHandler : MonoBehaviour
     [SerializeField] private bool test;
     [SerializeField] private Texture2D example;
     private ARRaycastManager raycastManager; // !!!!!!!!!!!!!
-    private GameObject[] created; // для добавленных на сцену элементов, чтобы еще раз не добавлять
+    private List <GameObject> created = new List<GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
+    private List <GameObject> createdPrefab = new List<GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
     private Detection[] detectedObjects;
 
     public Rect boundingBox;
@@ -50,14 +51,6 @@ public class ImageTrackingHandler : MonoBehaviour
 
     void OnEnable()
     {
-        if (_trackedImageManager != null)
-        {
-            _trackedImageManager.trackedImagesChanged += OnImageChanged;
-        }
-        else
-        {
-            Debug.LogError("_trackedImageManager is null in OnEnable");
-        }
 
         if (cameraManager != null)
         {
@@ -71,14 +64,6 @@ public class ImageTrackingHandler : MonoBehaviour
 
     void OnDisable()
     {
-        if (_trackedImageManager != null)
-        {
-            _trackedImageManager.trackedImagesChanged -= OnImageChanged;
-        }
-        else
-        {
-            Debug.LogError("_trackedImageManager is null in OnDisable");
-        }
 
         if (cameraManager != null)
         {
@@ -201,6 +186,7 @@ public class ImageTrackingHandler : MonoBehaviour
                 if (latestImage.height < latestImage.width && !test) latestImage = Rotate90(latestImage);
                 Debug.Log($"height: {latestImage.height} width: {latestImage.width}");
                 //SaveTextureAsPNG(latestImage,"check");
+                if (created == null) Debug.Log("created=null");
                 detectedObjects = yolo.Detect(latestImage);
                 while (!yolo.ready)
                 {
@@ -212,16 +198,20 @@ public class ImageTrackingHandler : MonoBehaviour
                 {
                     Debug.Log($"Detected {detectedObjects.Length} objects");
                     string[] label = objectToPrefabMap.Keys.ToArray();
-                    for (int i=0; i < detectedObjects.Length;i++) 
+                    for (int i = 0; i < detectedObjects.Length; i++)
                     {
-                        //created[i] = 
-                        //Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], detectedObjects[i].place, Quaternion.identity);
-                        
+                        if (!createdPrefab.Contains(objectToPrefabMap[label[detectedObjects[i].classID]]))
+                        {
+                            var temp = Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], detectedObjects[i].place, Quaternion.identity);
+                            created.Add(temp);
+                            createdPrefab.Add(objectToPrefabMap[label[detectedObjects[i].classID]]);
 
-                        //detectionScript.PrintDetections(detectedObjects);
-                        Debug.Log("distance: " + detectedObjects[0].place.z);
+                        }
+
+
+                        //detectionScript.PrintDetections(detectedObjects);                      
                     }
-                    
+
                     //detectedObjects = null;
                 }
                 latestCpuImage.Dispose();
@@ -232,7 +222,7 @@ public class ImageTrackingHandler : MonoBehaviour
                 Debug.Log("Skipping detection, latestImage or detectionScript not ready");
             }
 
-            yield return new WaitForSeconds(3f);
+            yield return new WaitForSeconds(2f);
         }
     }
     private void OnGUI()
@@ -305,42 +295,6 @@ public class ImageTrackingHandler : MonoBehaviour
         return texture;
     }
 
-    void OnImageChanged(ARTrackedImagesChangedEventArgs eventArgs)
-    {
-        foreach (ARTrackedImage addedImage in eventArgs.added)
-        {
-            // Создайте экземпляр объекта на месте добавленного изображения
-            InstantiateObjectAtImage(addedImage);
-        }
-
-        foreach (ARTrackedImage removedImage in eventArgs.removed)
-        {
-            // При необходимости удалите или скройте объект, если изображение больше не отслеживается
-            HandleRemovedImage(removedImage);
-        }
-    }
-
-    void InstantiateObjectAtImage(ARTrackedImage trackedImage)
-    {
-        if (objectToPrefabMap.TryGetValue(trackedImage.referenceImage.name, out GameObject prefab))
-        {
-            GameObject instantiatedObject = Instantiate(prefab, trackedImage.transform.position, trackedImage.transform.rotation);
-
-            // Прикрепляем объект к изображению и устанавливаем localPosition и localRotation в ноль
-            instantiatedObject.transform.SetParent(trackedImage.transform, false);
-            instantiatedObject.transform.localPosition = Vector3.zero;
-            instantiatedObject.transform.localRotation = Quaternion.identity;
-        }
-    }
-
-    void HandleRemovedImage(ARTrackedImage trackedImage)
-    {
-        if (trackedImage.transform.childCount > 0)
-        {
-            Transform existingObject = trackedImage.transform.GetChild(0);
-            Destroy(existingObject.gameObject);
-        }
-    }
 
     Texture2D Rotate90(Texture2D originalTexture)
     {
