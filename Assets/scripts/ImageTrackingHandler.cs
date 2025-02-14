@@ -31,8 +31,13 @@ public class ImageTrackingHandler : MonoBehaviour
     public Yolo yolo;
     [SerializeField] private bool test;
     [SerializeField] private Texture2D example;
+    private ARRaycastManager raycastManager; // !!!!!!!!!!!!!
     private GameObject[] created; // для добавленных на сцену элементов, чтобы еще раз не добавлять
+    private Detection[] detectedObjects;
 
+    public Rect boundingBox;
+    public Color boxColor = Color.red;
+    private Texture2D _lineTexture;
     public class DetectedObject
     {
         public Vector3 Position;
@@ -90,6 +95,12 @@ public class ImageTrackingHandler : MonoBehaviour
         //detectionScript = gameObject.GetComponent<detection>();
         yolo = gameObject.GetComponent<Yolo>();
         _trackedImageManager = GetComponent<ARTrackedImageManager>();
+        raycastManager = GetComponent<ARRaycastManager>(); // Инициализация ARRaycastManager !!!!!!!!!!!
+
+        _lineTexture = new Texture2D(1, 1);
+        _lineTexture.SetPixel(0, 0, boxColor);
+        _lineTexture.Apply();
+
         objectToPrefabMap = new Dictionary<string, GameObject>();
         cameraManager = GetComponentInChildren<ARCameraManager>();
         if (!yolo || !_trackedImageManager || objectToPrefabMap == null || !cameraManager) 
@@ -174,7 +185,6 @@ public class ImageTrackingHandler : MonoBehaviour
 
         Debug.Log("Successfully acquired latest CPU image");
     }
-
     IEnumerator CallDetectEveryFiveSeconds()
     {
 
@@ -190,8 +200,8 @@ public class ImageTrackingHandler : MonoBehaviour
                 latestImage = !test ? ConvertImageToTexture2D(latestCpuImage):example;
                 if (latestImage.height < latestImage.width && !test) latestImage = Rotate90(latestImage);
                 Debug.Log($"height: {latestImage.height} width: {latestImage.width}");
-
-                var detectedObjects = yolo.Detect(latestImage);
+                //SaveTextureAsPNG(latestImage,"check");
+                detectedObjects = yolo.Detect(latestImage);
                 while (!yolo.ready)
                 {
                     yield return null;
@@ -205,15 +215,14 @@ public class ImageTrackingHandler : MonoBehaviour
                     for (int i=0; i < detectedObjects.Length;i++) 
                     {
                         //created[i] = 
-                        Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], detectedObjects[i].place + new Vector3(0f, 0f, 0.1f), Quaternion.identity);
-
-
+                        //Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], detectedObjects[i].place, Quaternion.identity);
+                        
 
                         //detectionScript.PrintDetections(detectedObjects);
                         Debug.Log("distance: " + detectedObjects[0].place.z);
                     }
                     
-                    detectedObjects = null;
+                    //detectedObjects = null;
                 }
                 latestCpuImage.Dispose();
                 isProcessing = false;
@@ -225,6 +234,35 @@ public class ImageTrackingHandler : MonoBehaviour
 
             yield return new WaitForSeconds(3f);
         }
+    }
+    private void OnGUI()
+    {
+        if (detectedObjects == null) return;
+
+        foreach (var detection in detectedObjects)
+        {
+            // Преобразуем координаты, так как (0,0) в Unity GUI находится вверху экрана
+            Rect screenRect = new Rect(
+                detection.box.x,
+                Screen.height - detection.box.y - detection.box.height,
+                detection.box.width,
+                detection.box.height
+            );
+
+            DrawBoundingBox(screenRect, Color.red);
+            Debug.Log($"name:{detection}");
+            Debug.Log($"Bounding Box: x={screenRect.x}, y={screenRect.y}, width={screenRect.width}, height={screenRect.height}");
+            Debug.Log($"Screen: width={Screen.width}, height={Screen.height}");
+        }
+    }
+
+    void DrawBoundingBox(Rect rect, Color color)
+    {
+        GUI.color = color;
+        GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2), _lineTexture); // Верхняя линия
+        GUI.DrawTexture(new Rect(rect.x, rect.y + rect.height - 2, rect.width, 2), _lineTexture); // Нижняя линия
+        GUI.DrawTexture(new Rect(rect.x, rect.y, 2, rect.height), _lineTexture); // Левая линия
+        GUI.DrawTexture(new Rect(rect.x + rect.width - 2, rect.y, 2, rect.height), _lineTexture); // Правая линия
     }
 
     Texture2D ConvertImageToTexture2D(XRCpuImage image)
@@ -326,5 +364,15 @@ public class ImageTrackingHandler : MonoBehaviour
         rotatedTexture.Apply();
 
         return rotatedTexture;
+    }
+
+    void SaveTextureAsPNG(Texture2D texture, string fileNamePrefix)
+    {
+        byte[] bytes = texture.EncodeToPNG();
+        string timestamp = DateTime.Now.ToString("HHmmss");
+        string uniqueFileName = $"{fileNamePrefix}_{timestamp}.png";
+        string filePath = Path.Combine(Application.persistentDataPath, uniqueFileName);
+        File.WriteAllBytes(filePath, bytes);
+        Debug.Log($"Image saved to: {filePath}");
     }
 }

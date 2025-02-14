@@ -26,9 +26,8 @@ public class Yolo : MonoBehaviour
     void Awake()
     {
         runtimeModel = ModelLoader.Load(modelAsset);
-        worker = new Worker(runtimeModel, BackendType.GPUCompute); 
+        worker = new Worker(runtimeModel, BackendType.GPUCompute);
         //var answer = Detect(example);
-
 
         //Tensor inputTensor = TransformInputToTensor(example);
 
@@ -64,13 +63,14 @@ public class Yolo : MonoBehaviour
         //string output = "class 1 : ";
         for (int i = 0; i < 8400; i++)
         {
-            float x_center   = cpuTensor[0, 0, i] * (Screen.width   / 640f);
-            float y_center   = cpuTensor[0, 1, i] * (Screen.height  / 640f);
-            float width      = cpuTensor[0, 2, i] * (Screen.width   / 640f);
+            float x_center   = (Screen.width/2)+Mathf.Sign(cpuTensor[0, 0, i] - 640f / 2f)*(Mathf.Abs(cpuTensor[0, 0, i]-640f/2f) * (Screen.height * ((float)texture2D.width / (float)texture2D.height) / 640f));
+            float y_center   = (640 - cpuTensor[0, 1, i]) * (Screen.height  / 640f); // Yolo (0,0) - левый верхний угол.  Unity (0,0) - левый нижний угол
+            float width      = cpuTensor[0, 2, i] * (Screen.height*((float)texture2D.width/(float)texture2D.height)/ 640f);
             float height     = cpuTensor[0, 3, i] * (Screen.height  / 640f);
 
-            float confidence = Enumerable.Range(4, numClasses) // √енерируем последовательность индексов i от 5 до numclasses
-            .Select(k => cpuTensor[0, k, i]) // »звлекаем значение cpuTensor[0, i, 4]
+
+            float confidence = Enumerable.Range(4, numClasses) // 
+            .Select(k => cpuTensor[0, k, i])
             .Max();
 
             //output += $" {cpuTensor[0, 5, i]},";
@@ -78,7 +78,7 @@ public class Yolo : MonoBehaviour
             //if (cpuTensor[0, 5, i] > 0.5f) Debug.Log("class 1 " + cpuTensor[0, 5, i] + " i: "+ i + " confidence: " + cpuTensor[0, 4, i]);
             // Ќаходим максимальное значение
 
-            if (confidence > 0.5f)
+            if (confidence > 0.9f)
             {
                 int bestClassID = Enumerable.Range(4, numClasses)
                 .Select(k => cpuTensor[0, k, i])
@@ -88,11 +88,14 @@ public class Yolo : MonoBehaviour
                 //Debug.Log("max class score: " + confidence);
                 //bestClassID = (confidence > 0.5f) ? bestClassID : 0;
                 Debug.Log($"Object detected with confidence {confidence}: " +
-                          $"(x_center: {x_center}, y_center: {y_center}, width: {width}, height: {height}, classID: {bestClassID})");
+                          $"(x_center: {x_center}, y_center: {y_center}, width: {width}, height: {height}, classID: {bestClassID})\n " +
+                          $"x_center: {cpuTensor[0, 0, i]}, y_center: {cpuTensor[0, 1, i]}, width: {cpuTensor[0, 2, i]}, height: {cpuTensor[0, 3, i]}");
+                        Debug.Log($"texture2D width: {texture2D.width} height: {texture2D.height}");
+
 
                 Detection detection = new Detection
                 {
-                    place=cam.ScreenToWorldPoint(new Vector3(x_center, y_center, CalculateDistance(height, 0.15f, cam))),
+                    place=cam.ScreenToWorldPoint(new Vector3(x_center, y_center, cam.nearClipPlane + CalculateDistance(height, 0.15f, cam))), 
                     box = new Rect(x_center - width / 2, y_center - height / 2, width, height),
                     classID = bestClassID, 
                     score = confidence,
