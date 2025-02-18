@@ -3,7 +3,7 @@
     "m_SelectedProcess": {
         "deviceId": "RF8T201AGNK",
         "name": "com.chelilack.app",
-        "processId": 21430,
+        "processId": 2975,
         "exited": false
     },
     "m_SelectedPriority": 1,
@@ -17,26 +17,32 @@
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 5112,
+            "processId": 27819,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 13237,
+            "processId": 32226,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 15213,
+            "processId": 14044,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 21430,
+            "processId": 20108,
             "exited": true
+        },
+        {
+            "deviceId": "RF8T201AGNK",
+            "name": "com.chelilack.app",
+            "processId": 2975,
+            "exited": false
         }
     ],
     "m_Tags": {
@@ -67,11 +73,11 @@
             },
             {
                 "m_Name": "CRASH",
-                "m_Selected": false
+                "m_Selected": true
             },
             {
                 "m_Name": "SurfaceSyncer",
-                "m_Selected": false
+                "m_Selected": true
             }
         ]
     },
@@ -97,7 +103,7 @@
         "AutoCapture": true
     },
     "m_FilterOptions": {
-        "m_Filter": "",
+        "m_Filter": "readbackandclone",
         "m_UseRegularExpressions": false,
         "m_MatchCase": false
     },

@@ -9,6 +9,8 @@ using TMPro;
 using System.Linq;
 using System.IO;
 using Unity.Sentis;
+using System.Threading.Tasks;
+using System.Threading;
 
 [Serializable]
 public class objectPrefab
@@ -23,18 +25,19 @@ public class ImageTrackingHandler : MonoBehaviour
     private Dictionary<string, GameObject> objectToPrefabMap;
     private ARTrackedImageManager _trackedImageManager;
     private detection detectionScript;
-    [SerializeField] private ARCameraManager cameraManager;
-    private XRCpuImage latestCpuImage;
-    private Texture2D latestImage;
+    [SerializeField] private FrameUpdate frameUpdate;
     [SerializeField] private TextMeshProUGUI DebugText;
     public ARSession arSession;
     public Yolo yolo;
     [SerializeField] private bool test;
     [SerializeField] private Texture2D example;
+    private Texture2D latestImage;
     private ARRaycastManager raycastManager; // !!!!!!!!!!!!!
     private List <GameObject> created = new List<GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
     private List <GameObject> createdPrefab = new List<GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
     private Detection[] detectedObjects;
+
+    private CancellationTokenSource cts;
 
     public Rect boundingBox;
     public Color boxColor = Color.red;
@@ -47,48 +50,48 @@ public class ImageTrackingHandler : MonoBehaviour
         public float Rotation;
     }
 
-    private bool isProcessing = false;
+    //void OnEnable()
+    //{
 
-    void OnEnable()
-    {
+    //    if (cameraManager != null)
+    //    {
+    //        cameraManager.frameReceived += OnCameraFrameReceived;
+    //    }
+    //    else
+    //    {
+    //        Debug.LogError("cameraManager is null in Awake");
+    //    }
+    //}
 
-        if (cameraManager != null)
-        {
-            cameraManager.frameReceived += OnCameraFrameReceived;
-        }
-        else
-        {
-            Debug.LogError("cameraManager is null in Awake");
-        }
-    }
+    //void OnDisable()
+    //{
 
-    void OnDisable()
-    {
-
-        if (cameraManager != null)
-        {
-            cameraManager.frameReceived -= OnCameraFrameReceived;
-        }
-        else
-        {
-            Debug.Log("cameraManager is null in Awake");
-        }
-    }
+    //    if (cameraManager != null)
+    //    {
+    //        cameraManager.frameReceived -= OnCameraFrameReceived;
+    //    }
+    //    else
+    //    {
+    //        Debug.Log("cameraManager is null in Awake");
+    //    }
+    //}
 
     void Awake()
     {
         //detectionScript = gameObject.GetComponent<detection>();
         yolo = gameObject.GetComponent<Yolo>();
+        frameUpdate = gameObject.GetComponent<FrameUpdate>();
         _trackedImageManager = GetComponent<ARTrackedImageManager>();
         raycastManager = GetComponent<ARRaycastManager>(); // Инициализация ARRaycastManager !!!!!!!!!!!
+
+        cts = new CancellationTokenSource();
 
         _lineTexture = new Texture2D(1, 1);
         _lineTexture.SetPixel(0, 0, boxColor);
         _lineTexture.Apply();
 
         objectToPrefabMap = new Dictionary<string, GameObject>();
-        cameraManager = GetComponentInChildren<ARCameraManager>();
-        if (!yolo || !_trackedImageManager || objectToPrefabMap == null || !cameraManager) 
+        if (!yolo || !_trackedImageManager || objectToPrefabMap == null) 
         {
             Debug.Log("яяяяяяяяяяя");
         }
@@ -98,101 +101,47 @@ public class ImageTrackingHandler : MonoBehaviour
         }
     }
 
-    void Start()
+    async void Start()
     {
-#if UNITY_ANDROID
-        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Camera))
-        {
-            UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Camera);
-        }
-#endif
-
-        if (arSession == null || !arSession.enabled)
-        {
-            Debug.LogError("AR Session is not enabled or not found");
-            return;
-        }
-
-        if (cameraManager == null || !cameraManager.enabled)
-        {
-            Debug.LogError("AR Camera Manager is not enabled or not found");
-            return;
-        }
-
-        var cameraSubsystem = cameraManager.subsystem;
-        if (cameraSubsystem != null)
-        {
-            Debug.Log("Device supports CPU images");
-        }
-        else
-        {
-            Debug.LogError("Device does not support CPU images");
-        }
-
-        StartCoroutine(CallDetectEveryFiveSeconds());
+        await CallDetectEveryFiveSeconds();
     }
 
-    void OnCameraFrameReceived(ARCameraFrameEventArgs eventArgs)
-    {
-        if (isProcessing)
-        {
-            return;
-        }
 
-        if (cameraManager == null)
-        {
-            Debug.Log("cameraManager is null");
-            return;
-        }
-
-        if (!cameraManager.enabled)
-        {
-            Debug.Log("cameraManager is not enabled");
-            return;
-        }
-
-        if (cameraManager.subsystem == null)
-        {
-            Debug.Log("cameraManager subsystem is null");
-            return;
-        }
-
-        if (latestCpuImage.valid)
-        {
-            latestCpuImage.Dispose();
-        }
-
-        if (!cameraManager.TryAcquireLatestCpuImage(out latestCpuImage))
-        {
-            Debug.Log("Failed to acquire latest CPU image");
-            return;
-        }
-
-        Debug.Log("Successfully acquired latest CPU image");
-    }
-    IEnumerator CallDetectEveryFiveSeconds()
+    public async Task CallDetectEveryFiveSeconds()
     {
 
-        while (true)
+        while (!cts.IsCancellationRequested)
         {
-            Debug.Log("Processing frame for detection");
-            
-            //if ((latestCpuImage.valid || test) && detectionScript.ready)
-            if ((latestCpuImage.valid || test) && yolo.ready)
+            Debug.Log($"Processing frame for detection. frame status: {frameUpdate.latestImage}");
+            //while (!yolo.ready) 
+            //{
+            //    await Task.Delay(100); // 
+            //}
+            //if ((latestCpuImage.valid || test) && yolo.ready)
+            if (test || (yolo.ready && frameUpdate.latestImage != null))
             {
-
-                isProcessing = true;
-                latestImage = !test ? ConvertImageToTexture2D(latestCpuImage):example;
+                float start = Time.realtimeSinceStartup;
+                //latestImage = !test ? ConvertImageToTexture2D(latestCpuImage):example;
+                latestImage = !test ? frameUpdate.latestImage : example ;
+                Debug.Log($"texture2D {(float)Time.realtimeSinceStartup - start} sec");
                 if (latestImage.height < latestImage.width && !test) latestImage = Rotate90(latestImage);
                 Debug.Log($"height: {latestImage.height} width: {latestImage.width}");
                 //SaveTextureAsPNG(latestImage,"check");
                 if (created == null) Debug.Log("created=null");
-                detectedObjects = yolo.Detect(latestImage);
-                while (!yolo.ready)
-                {
-                    yield return null;
-                }
-                Debug.Log(yolo.ready);
+
+                float startTime = Time.realtimeSinceStartup;
+
+
+
+
+                
+
+                detectedObjects = await yolo.Detect(latestImage);
+
+
+                Debug.Log($"Detect time: {Mathf.Abs(startTime - (float)Time.realtimeSinceStartup)}");
+
+
                 //created = detectedObjects.Length != 0 ? new GameObject[detectedObjects.Length] : null ;
                 if (detectedObjects != null && detectedObjects.Length != 0)// && detectedObjects.Length != created.Length) // надо будет исправить это для теста 
                 {
@@ -214,15 +163,14 @@ public class ImageTrackingHandler : MonoBehaviour
 
                     //detectedObjects = null;
                 }
-                latestCpuImage.Dispose();
-                isProcessing = false;
             }
             else
             {
-                Debug.Log("Skipping detection, latestImage or detectionScript not ready");
+                Debug.Log($"Skipping detection, latestImage or detectionScript not ready( {yolo.ready} )");
+                
             }
-
-            yield return new WaitForSeconds(2f);
+            await Task.Yield();
+            await Task.Delay(1500);
         }
     }
     private void OnGUI()
@@ -255,45 +203,45 @@ public class ImageTrackingHandler : MonoBehaviour
         GUI.DrawTexture(new Rect(rect.x + rect.width - 2, rect.y, 2, rect.height), _lineTexture); // Правая линия
     }
 
-    Texture2D ConvertImageToTexture2D(XRCpuImage image)
-    {
-        Debug.Log("Converting XRCpuImage to Texture2D");
+    //Texture2D ConvertImageToTexture2D(XRCpuImage image)
+    //{
+    //    Debug.Log("Converting XRCpuImage to Texture2D");
 
 
-        Texture2D texture = new Texture2D(image.width, image.height, TextureFormat.RGBA32, false);
+    //    Texture2D texture = new Texture2D(image.width, image.height, TextureFormat.RGBA32, false);
 
-        XRCpuImage.ConversionParams conversionParams = new XRCpuImage.ConversionParams()
-        {
-            inputRect = new RectInt(0, 0, image.width, image.height),
-            outputDimensions = new Vector2Int(image.width, image.height),
+    //    XRCpuImage.ConversionParams conversionParams = new XRCpuImage.ConversionParams()
+    //    {
+    //        inputRect = new RectInt(0, 0, image.width, image.height),
+    //        outputDimensions = new Vector2Int(image.width, image.height),
 
-            outputFormat = TextureFormat.RGBA32,
-            transformation = XRCpuImage.Transformation.None
-        };
+    //        outputFormat = TextureFormat.RGBA32,
+    //        transformation = XRCpuImage.Transformation.None
+    //    };
 
-        int dataSize = image.GetConvertedDataSize(conversionParams);
+    //    int dataSize = image.GetConvertedDataSize(conversionParams);
 
-        var rawTextureData = new NativeArray<byte>(dataSize, Allocator.Temp);
+    //    var rawTextureData = new NativeArray<byte>(dataSize, Allocator.Temp);
 
-        try
-        {
-            image.Convert(conversionParams, rawTextureData);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError("Exception during image conversion: " + ex.Message);
-            image.Dispose();
-            return null;
-        }
+    //    try
+    //    {
+    //        image.Convert(conversionParams, rawTextureData);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Debug.LogError("Exception during image conversion: " + ex.Message);
+    //        image.Dispose();
+    //        return null;
+    //    }
 
-        texture.LoadRawTextureData(rawTextureData);
-        texture.Apply();
+    //    texture.LoadRawTextureData(rawTextureData);
+    //    texture.Apply();
 
-        image.Dispose();
-        rawTextureData.Dispose();
-        Debug.Log("Conversion to Texture2D completed");
-        return texture;
-    }
+    //    image.Dispose();
+    //    rawTextureData.Dispose();
+    //    Debug.Log("Conversion to Texture2D completed");
+    //    return texture;
+    //}
 
 
     Texture2D Rotate90(Texture2D originalTexture)
@@ -328,5 +276,23 @@ public class ImageTrackingHandler : MonoBehaviour
         string filePath = Path.Combine(Application.persistentDataPath, uniqueFileName);
         File.WriteAllBytes(filePath, bytes);
         Debug.Log($"Image saved to: {filePath}");
+    }
+
+    //void OnDestroy()
+    //{
+    //    StopAllTasks();
+    //}
+
+    void OnApplicationQuit()
+    {
+        StopAllTasks();
+    }
+    void StopAllTasks()
+    {
+        if (cts != null)
+        {
+            cts.Cancel(); 
+            cts.Dispose();
+        }
     }
 }

@@ -4,29 +4,37 @@ using UnityEngine;
 using Unity.Sentis;
 using System.Collections;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
+
 
 public class Yolo : MonoBehaviour
 {
     public ModelAsset modelAsset;
     public Texture2D example;
-    public bool ready=true;
+    public bool ready = false;
     public bool finished = false;
     public Detection[] currentResult;
     public Camera cam;
     Model runtimeModel;
     Worker worker;
     Tensor<float> inputTensor;
+    IEnumerator m_Schedule;
+    const int k_LayersPerFrame = 4;
     //Tensor<float> inputTensor;
     public struct ClassificationResult
     {
-        public int ClassID;      
-        public float Probability; 
+        public int ClassID;
+        public float Probability;
     }
-
-    void Awake()
+    private CancellationTokenSource cts;
+    async void Awake()
     {
-        runtimeModel = ModelLoader.Load(modelAsset);
+        runtimeModel = await Task.Run(() => ModelLoader.Load(modelAsset));
         worker = new Worker(runtimeModel, BackendType.GPUCompute);
+        ready = true;
+        cts = new CancellationTokenSource();
+
         //var answer = Detect(example);
 
         //Tensor inputTensor = TransformInputToTensor(example);
@@ -41,21 +49,36 @@ public class Yolo : MonoBehaviour
 
 
     }
-    private IEnumerator RunModelInference(Texture2D texture2D)
+    private async Task RunModelInference(Texture2D texture2D)
     {
         ready = false;
         inputTensor = TextureConverter.ToTensor(texture2D, 640, 640, 3);
-        float start = Time.realtimeSinceStartup;
-        worker.Schedule(inputTensor);
+        m_Schedule = worker.ScheduleIterable(inputTensor);
+        //worker.Schedule(inputTensor);
+
+        int it = 0;
+        while (m_Schedule.MoveNext()) 
+        {
+            if (++it % k_LayersPerFrame == 0) 
+            {
+                await Task.Yield(); 
+                it = 0; 
+            }
+        }
+
         Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 
-        outputTensor.ReadbackRequest();
+        //Tensor<float> cpuTensor = await outputTensor.ReadbackAndCloneAsync();
+        Debug.Log($"Before await: {Thread.CurrentThread.ManagedThreadId}");
+        Debug.Log("bool2: " + outputTensor.IsReadbackRequestDone());
+        float start = Time.realtimeSinceStartup;
+        Tensor<float> cpuTensor = await outputTensor.ReadbackAndCloneAsync(); // фоном вызывать нельзя
+        Debug.Log($" readbackandclone: {(float)Time.realtimeSinceStartup - start} sec");
+        //Tensor<float> cpuTensor = await Task.Run(() => outputTensor.ReadbackAndCloneAsync());
 
-        while (!outputTensor.IsReadbackRequestDone())
-        {
-            yield return null;
-        }
-        var cpuTensor = outputTensor.ReadbackAndClone();
+        // фоном вызывать нельзя
+        Debug.Log($"After await: {Thread.CurrentThread.ManagedThreadId}");
+
         Debug.Log("bool: " + outputTensor.IsReadbackRequestDone());
         Debug.Log("000: " + cpuTensor.shape);
         int numClasses = cpuTensor.shape[1] - 4;
@@ -116,7 +139,7 @@ public class Yolo : MonoBehaviour
              .GroupBy(d => d.classID)
              .Select(g => g.OrderByDescending(d => d.score).First())
              .ToArray();
-            for (int i = 0; i < numClasses; i++)
+            for (int i = 0; i < currentResult.Length; i++)
             {
                 Debug.Log($"best {i} class: {currentResult[i].score}");
             }
@@ -125,9 +148,13 @@ public class Yolo : MonoBehaviour
         ready = true;
         finished = true;
     }
-    public Detection[] Detect(Texture2D texture2D) 
+    async public Task<Detection[]> Detect(Texture2D texture2D) 
     {
-        Coroutine coroutine = ready ? StartCoroutine(RunModelInference(texture2D)): null;
+        if (runtimeModel == null) return null;
+        if (runtimeModel == null) Debug.Log("still no model :( ");
+        if (worker == null) Debug.Log("still no worker :( ");
+        if (worker == null) return null;
+        if (ready) await RunModelInference(texture2D);
         //while (!ready) {}
         //StopCoroutine(coroutine);
 
