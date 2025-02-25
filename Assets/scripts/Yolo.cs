@@ -15,6 +15,7 @@ public class Yolo : MonoBehaviour
     public bool ready = false;
     public bool finished = false;
     public Detection[] currentResult;
+    public float imgSize;
     public Camera cam;
     Model runtimeModel;
     Worker worker;
@@ -30,7 +31,14 @@ public class Yolo : MonoBehaviour
     private CancellationTokenSource cts;
     async void Awake()
     {
-        runtimeModel = await Task.Run(() => ModelLoader.Load(modelAsset));
+        Debug.Log($"Main Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+        runtimeModel = await Task.Run(() =>
+        {
+            Debug.Log($"Background Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+            return ModelLoader.Load(modelAsset);
+        });
+        Debug.Log($"Back to Main Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+        
         worker = new Worker(runtimeModel, BackendType.GPUCompute);
         ready = true;
         cts = new CancellationTokenSource();
@@ -52,8 +60,9 @@ public class Yolo : MonoBehaviour
     private async Task RunModelInference(Texture2D texture2D)
     {
         ready = false;
-        inputTensor = TextureConverter.ToTensor(texture2D, 640, 640, 3);
+        inputTensor = TextureConverter.ToTensor(texture2D, (int)imgSize, (int)imgSize, 3);
         m_Schedule = worker.ScheduleIterable(inputTensor);
+        float start = Time.realtimeSinceStartup;
         //worker.Schedule(inputTensor);
 
         int it = 0;
@@ -71,7 +80,7 @@ public class Yolo : MonoBehaviour
         //Tensor<float> cpuTensor = await outputTensor.ReadbackAndCloneAsync();
         Debug.Log($"Before await: {Thread.CurrentThread.ManagedThreadId}");
         Debug.Log("bool2: " + outputTensor.IsReadbackRequestDone());
-        float start = Time.realtimeSinceStartup;
+
         Tensor<float> cpuTensor = await outputTensor.ReadbackAndCloneAsync(); // фоном вызывать нельзя
         Debug.Log($" readbackandclone: {(float)Time.realtimeSinceStartup - start} sec");
         //Tensor<float> cpuTensor = await Task.Run(() => outputTensor.ReadbackAndCloneAsync());
@@ -82,14 +91,15 @@ public class Yolo : MonoBehaviour
         Debug.Log("bool: " + outputTensor.IsReadbackRequestDone());
         Debug.Log("000: " + cpuTensor.shape);
         int numClasses = cpuTensor.shape[1] - 4;
+        int numPrediction = cpuTensor.shape[2];
         List<Detection> detections = new List<Detection>();
         //string output = "class 1 : ";
-        for (int i = 0; i < 8400; i++)
+        for (int i = 0; i < numPrediction; i++)
         {
-            float x_center   = (Screen.width/2)+Mathf.Sign(cpuTensor[0, 0, i] - 640f / 2f)*(Mathf.Abs(cpuTensor[0, 0, i]-640f/2f) * (Screen.height * ((float)texture2D.width / (float)texture2D.height) / 640f));
-            float y_center   = (640 - cpuTensor[0, 1, i]) * (Screen.height  / 640f); // Yolo (0,0) - левый верхний угол.  Unity (0,0) - левый нижний угол
-            float width      = cpuTensor[0, 2, i] * (Screen.height*((float)texture2D.width/(float)texture2D.height)/ 640f);
-            float height     = cpuTensor[0, 3, i] * (Screen.height  / 640f);
+            float x_center   = (Screen.width/2)+Mathf.Sign(cpuTensor[0, 0, i] - imgSize / 2f)*(Mathf.Abs(cpuTensor[0, 0, i]-imgSize/2f) * (Screen.height * ((float)texture2D.width / (float)texture2D.height) / imgSize));
+            float y_center   = (imgSize - cpuTensor[0, 1, i]) * (Screen.height  / imgSize); // Yolo (0,0) - левый верхний угол.  Unity (0,0) - левый нижний угол
+            float width      = cpuTensor[0, 2, i] * (Screen.height*((float)texture2D.width/(float)texture2D.height)/ imgSize);
+            float height     = cpuTensor[0, 3, i] * (Screen.height  / imgSize);
 
 
             float confidence = Enumerable.Range(4, numClasses) // 

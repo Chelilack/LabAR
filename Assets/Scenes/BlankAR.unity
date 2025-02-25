@@ -631,11 +631,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b5d9b3e08bae504f8374b1d5a2bc663, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  modelAsset: {fileID: 5022602860645237092, guid: 728cae8c9c6f2c24491fe038aabd7a4f,
+  modelAsset: {fileID: 5022602860645237092, guid: 4ae9846fb156ec748b71aac6905b515f,
     type: 3}
   example: {fileID: 2800000, guid: d82d0bc847d5dbb49a846f5ee1d56ca3, type: 3}
   ready: 1
   finished: 0
+  imgSize: 320
   cam: {fileID: 1354141926}
 --- !u!114 &1659859606
 MonoBehaviour:
