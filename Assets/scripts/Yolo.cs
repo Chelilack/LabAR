@@ -7,6 +7,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 
+public struct Detection
+{
+    public Vector3 place;
+    public Rect box;
+    public int classID;
+    public float score;
+}
 
 public class Yolo : MonoBehaviour
 {
@@ -28,6 +35,8 @@ public class Yolo : MonoBehaviour
         public int ClassID;
         public float Probability;
     }
+
+
     private CancellationTokenSource cts;
     async void Awake()
     {

@@ -509,6 +509,57 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1659859599}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1379695668
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1379695670}
+  - component: {fileID: 1379695669}
+  m_Layer: 0
+  m_Name: Dictionary
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1379695669
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1379695668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7caea95c72ddc984cb5edf9c34561505, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  LabelPrefabPairs:
+  - Label: osci
+    Prefab: {fileID: 6714037142883943570, guid: 23e0bdb2eb56ac749b951975d41fa227,
+      type: 3}
+  - Label: screen
+    Prefab: {fileID: 4991394297949535524, guid: a5c0521520b0bdb47875da5edc9cbe44,
+      type: 3}
+--- !u!4 &1379695670
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1379695668}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1659859597
 GameObject:
   m_ObjectHideFlags: 0
@@ -560,19 +611,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 521dda22c6639f54f85f56c09772f5af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  objectPrefabList:
-  - imageName: first
-    prefab: {fileID: 6714037142883943570, guid: 23e0bdb2eb56ac749b951975d41fa227,
-      type: 3}
-  - imageName: screen
-    prefab: {fileID: 4991394297949535524, guid: a5c0521520b0bdb47875da5edc9cbe44,
-      type: 3}
-  - imageName: seven
-    prefab: {fileID: 5954002280004267808, guid: 0e89b5c5c77042f4a8f6a17c93e434c2,
-      type: 3}
-  - imageName: eight
-    prefab: {fileID: 5563367630463230524, guid: f5bb197eece083b4092603af2ea45913,
-      type: 3}
   frameUpdate: {fileID: 0}
   DebugText: {fileID: 0}
   arSession: {fileID: 656880747}
@@ -756,3 +794,4 @@ SceneRoots:
   - {fileID: 656880748}
   - {fileID: 166305268}
   - {fileID: 1669593502}
+  - {fileID: 1379695670}

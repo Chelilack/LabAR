@@ -21,10 +21,9 @@ public class objectPrefab
 
 public class ImageTrackingHandler : MonoBehaviour
 {
-    [SerializeField] private List<objectPrefab> objectPrefabList;
     private Dictionary<string, GameObject> objectToPrefabMap;
     private ARTrackedImageManager _trackedImageManager;
-    private detection detectionScript;
+
     [SerializeField] private FrameUpdate frameUpdate;
     [SerializeField] private TextMeshProUGUI DebugText;
     public ARSession arSession;
@@ -90,19 +89,16 @@ public class ImageTrackingHandler : MonoBehaviour
         _lineTexture.SetPixel(0, 0, boxColor);
         _lineTexture.Apply();
 
-        objectToPrefabMap = new Dictionary<string, GameObject>();
-        if (!yolo || !_trackedImageManager || objectToPrefabMap == null) 
-        {
-            Debug.Log("яяяяяяяяяяя");
-        }
-        foreach (var objectPrefab in objectPrefabList)
-        {
-            objectToPrefabMap[objectPrefab.imageName] = objectPrefab.prefab;
-        }
+        
     }
 
     async void Start()
     {
+        objectToPrefabMap = FindAnyObjectByType<PrefabLabelMap>().labelToPrefab;
+        if (!yolo || !_trackedImageManager || objectToPrefabMap == null)
+        {
+            Debug.LogError("smth wrong");
+        }
         await CallDetectEveryFiveSeconds();
     }
 
