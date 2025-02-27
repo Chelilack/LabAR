@@ -69,6 +69,7 @@ public class Yolo : MonoBehaviour
     private async Task RunModelInference(Texture2D texture2D)
     {
         ready = false;
+        Debug.Log($"pos begin: {Camera.main.transform.position.ToString()}");
         inputTensor = TextureConverter.ToTensor(texture2D, (int)imgSize, (int)imgSize, 3);
         m_Schedule = worker.ScheduleIterable(inputTensor);
         float start = Time.realtimeSinceStartup;
@@ -103,6 +104,7 @@ public class Yolo : MonoBehaviour
         int numPrediction = cpuTensor.shape[2];
         List<Detection> detections = new List<Detection>();
         //string output = "class 1 : ";
+        Debug.Log($"pos end: {Camera.main.transform.position.ToString()}");
         for (int i = 0; i < numPrediction; i++)
         {
             float x_center   = (Screen.width/2)+Mathf.Sign(cpuTensor[0, 0, i] - imgSize / 2f)*(Mathf.Abs(cpuTensor[0, 0, i]-imgSize/2f) * (Screen.height * ((float)texture2D.width / (float)texture2D.height) / imgSize));

@@ -1,13 +1,21 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using Unity.Collections;
-
+public struct ImageCameraTransform
+{
+    public Texture2D image;
+    public Transform cameraTransform;
+}
 public class FrameUpdate : MonoBehaviour
 {
     [SerializeField] private ARCameraManager cameraManager;
-    public Texture2D latestImage;
+    private Texture2D latestImage;
+    public ImageCameraTransform currentImage;
+    [SerializeField] private TMP_Text shake;
 
     public event Action<Texture2D> OnNewFrameReady; 
 
@@ -22,7 +30,20 @@ public class FrameUpdate : MonoBehaviour
         if (cameraManager != null)
             cameraManager.frameReceived -= OnCameraFrameReceived;
     }
+    public void Start()
+    {
 
+    }
+    private void Update()
+    {
+        Vector3 acceleration = Input.acceleration;
+        float shakeMagnitude = acceleration.magnitude;
+        shake.text = "shake: " + shakeMagnitude.ToString() + "\n" + Camera.main.transform.position.ToString();
+        //if (shakeMagnitude > 2.0f) // Порог чувствительности
+        //{
+             
+        //}
+    }
     private void OnCameraFrameReceived(ARCameraFrameEventArgs args)
     {
         if (cameraManager == null || !cameraManager.TryAcquireLatestCpuImage(out XRCpuImage cpuImage))
@@ -31,12 +52,11 @@ public class FrameUpdate : MonoBehaviour
         if (latestImage != null)
             Destroy(latestImage); // Удаляем старое изображение
 
-        // Конвертация CPUImage в Texture2D (работает в главном потоке)
         latestImage = ConvertImageToTexture2D(cpuImage);
+        currentImage = new ImageCameraTransform { image = latestImage, cameraTransform = Camera.main.transform };
         cpuImage.Dispose();
 
-        // Вызываем событие, передавая изображение нейросети
-        OnNewFrameReady?.Invoke(latestImage);
+        OnNewFrameReady?.Invoke(latestImage);// у него вообще есть подписчики????
     }
 
     private Texture2D ConvertImageToTexture2D(XRCpuImage image)

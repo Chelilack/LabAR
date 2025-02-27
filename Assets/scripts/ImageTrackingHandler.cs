@@ -41,6 +41,9 @@ public class ImageTrackingHandler : MonoBehaviour
     public Rect boundingBox;
     public Color boxColor = Color.red;
     private Texture2D _lineTexture;
+
+    private Vector3 lastCameraPosition;
+    private Quaternion lastCameraRotation;
     public class DetectedObject
     {
         public Vector3 Position;
@@ -48,32 +51,6 @@ public class ImageTrackingHandler : MonoBehaviour
         public string ClassName;
         public float Rotation;
     }
-
-    //void OnEnable()
-    //{
-
-    //    if (cameraManager != null)
-    //    {
-    //        cameraManager.frameReceived += OnCameraFrameReceived;
-    //    }
-    //    else
-    //    {
-    //        Debug.LogError("cameraManager is null in Awake");
-    //    }
-    //}
-
-    //void OnDisable()
-    //{
-
-    //    if (cameraManager != null)
-    //    {
-    //        cameraManager.frameReceived -= OnCameraFrameReceived;
-    //    }
-    //    else
-    //    {
-    //        Debug.Log("cameraManager is null in Awake");
-    //    }
-    //}
 
     void Awake()
     {
@@ -108,17 +85,18 @@ public class ImageTrackingHandler : MonoBehaviour
 
         while (!cts.IsCancellationRequested)
         {
-            Debug.Log($"Processing frame for detection. frame status: {frameUpdate.latestImage}");
+            Debug.Log($"Processing frame for detection. frame status: {frameUpdate.currentImage}");
             //while (!yolo.ready) 
             //{
             //    await Task.Delay(100); // 
             //}
             //if ((latestCpuImage.valid || test) && yolo.ready)
-            if (test || (yolo.ready && frameUpdate.latestImage != null))
+            ImageCameraTransform currentImage = frameUpdate.currentImage; // чтобы во время обработки изображение не поменялось 
+            if (test || (yolo.ready && currentImage.image != null))
             {
                 float start = Time.realtimeSinceStartup;
-                //latestImage = !test ? ConvertImageToTexture2D(latestCpuImage):example;
-                latestImage = !test ? frameUpdate.latestImage : example ;
+                SaveCameraTransform(currentImage.cameraTransform);
+                latestImage = !test ? currentImage.image : example ;
                 Debug.Log($"texture2D {(float)Time.realtimeSinceStartup - start} sec");
                 if (latestImage.height < latestImage.width && !test) latestImage = Rotate90(latestImage);
                 Debug.Log($"height: {latestImage.height} width: {latestImage.width}");
@@ -126,11 +104,6 @@ public class ImageTrackingHandler : MonoBehaviour
                 if (created == null) Debug.Log("created=null");
 
                 float startTime = Time.realtimeSinceStartup;
-
-
-
-
-                
 
                 detectedObjects = await yolo.Detect(latestImage);
 
@@ -145,19 +118,14 @@ public class ImageTrackingHandler : MonoBehaviour
                     string[] label = objectToPrefabMap.Keys.ToArray();
                     for (int i = 0; i < detectedObjects.Length; i++)
                     {
-                        if (!createdPrefab.Contains(objectToPrefabMap[label[detectedObjects[i].classID]]))
+                        if (!createdPrefab.Contains(objectToPrefabMap[label[detectedObjects[i].classID]]) || true)
                         {
-                            var temp = Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], detectedObjects[i].place, Quaternion.identity);
+                            var temp = Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], TransformPositionToNewCamera(detectedObjects[i].place, Camera.main.transform), Quaternion.identity);
                             created.Add(temp);
                             createdPrefab.Add(objectToPrefabMap[label[detectedObjects[i].classID]]);
 
-                        }
-
-
-                        //detectionScript.PrintDetections(detectedObjects);                      
+                        }     
                     }
-
-                    //detectedObjects = null;
                 }
             }
             else
@@ -189,7 +157,19 @@ public class ImageTrackingHandler : MonoBehaviour
             Debug.Log($"Screen: width={Screen.width}, height={Screen.height}");
         }
     }
+    public void SaveCameraTransform(Transform cameraTransform)
+    {
+        lastCameraPosition = cameraTransform.position;
+        lastCameraRotation = cameraTransform.rotation;
+    }
+    public Vector3 TransformPositionToNewCamera(Vector3 originalPosition, Transform currentCameraTransform)
+    {
+        Vector3 currentCameraPosition = currentCameraTransform.position;
+        Quaternion currentCameraRotation = currentCameraTransform.rotation;
 
+        Vector3 relativePosition = Quaternion.Inverse(currentCameraRotation) * (originalPosition - currentCameraPosition);
+        return lastCameraRotation * relativePosition + lastCameraPosition;
+    }
     void DrawBoundingBox(Rect rect, Color color)
     {
         GUI.color = color;
@@ -198,46 +178,6 @@ public class ImageTrackingHandler : MonoBehaviour
         GUI.DrawTexture(new Rect(rect.x, rect.y, 2, rect.height), _lineTexture); // Левая линия
         GUI.DrawTexture(new Rect(rect.x + rect.width - 2, rect.y, 2, rect.height), _lineTexture); // Правая линия
     }
-
-    //Texture2D ConvertImageToTexture2D(XRCpuImage image)
-    //{
-    //    Debug.Log("Converting XRCpuImage to Texture2D");
-
-
-    //    Texture2D texture = new Texture2D(image.width, image.height, TextureFormat.RGBA32, false);
-
-    //    XRCpuImage.ConversionParams conversionParams = new XRCpuImage.ConversionParams()
-    //    {
-    //        inputRect = new RectInt(0, 0, image.width, image.height),
-    //        outputDimensions = new Vector2Int(image.width, image.height),
-
-    //        outputFormat = TextureFormat.RGBA32,
-    //        transformation = XRCpuImage.Transformation.None
-    //    };
-
-    //    int dataSize = image.GetConvertedDataSize(conversionParams);
-
-    //    var rawTextureData = new NativeArray<byte>(dataSize, Allocator.Temp);
-
-    //    try
-    //    {
-    //        image.Convert(conversionParams, rawTextureData);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Debug.LogError("Exception during image conversion: " + ex.Message);
-    //        image.Dispose();
-    //        return null;
-    //    }
-
-    //    texture.LoadRawTextureData(rawTextureData);
-    //    texture.Apply();
-
-    //    image.Dispose();
-    //    rawTextureData.Dispose();
-    //    Debug.Log("Conversion to Texture2D completed");
-    //    return texture;
-    //}
 
 
     Texture2D Rotate90(Texture2D originalTexture)
