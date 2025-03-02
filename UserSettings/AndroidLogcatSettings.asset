@@ -3,7 +3,7 @@
     "m_SelectedProcess": {
         "deviceId": "RF8T201AGNK",
         "name": "com.chelilack.app",
-        "processId": 17520,
+        "processId": 10775,
         "exited": false
     },
     "m_SelectedPriority": 1,
@@ -11,31 +11,31 @@
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 31625,
+            "processId": 21687,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 4768,
+            "processId": 7519,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 5595,
+            "processId": 8873,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 15267,
+            "processId": 18895,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 17520,
+            "processId": 10775,
             "exited": false
         }
     ],
@@ -97,7 +97,7 @@
         "AutoCapture": true
     },
     "m_FilterOptions": {
-        "m_Filter": "pos",
+        "m_Filter": "",
         "m_UseRegularExpressions": false,
         "m_MatchCase": false
     },

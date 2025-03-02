@@ -32,8 +32,7 @@ public class ImageTrackingHandler : MonoBehaviour
     [SerializeField] private Texture2D example;
     private Texture2D latestImage;
     private ARRaycastManager raycastManager; // !!!!!!!!!!!!!
-    private List <GameObject> created = new List<GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
-    private List <GameObject> createdPrefab = new List<GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
+    private Dictionary <string, GameObject> created = new Dictionary<string, GameObject> (); // для добавленных на сцену элементов, чтобы еще раз не добавлять
     private Detection[] detectedObjects;
 
     private CancellationTokenSource cts;
@@ -44,6 +43,8 @@ public class ImageTrackingHandler : MonoBehaviour
 
     private Vector3 lastCameraPosition;
     private Quaternion lastCameraRotation;
+
+    public float distForReplace=0.05f;
     public class DetectedObject
     {
         public Vector3 Position;
@@ -112,19 +113,29 @@ public class ImageTrackingHandler : MonoBehaviour
 
 
                 //created = detectedObjects.Length != 0 ? new GameObject[detectedObjects.Length] : null ;
+                // Vector3.Distance(created[0].transform.position, TransformPositionToNewCamera(detectedObjects[0].place, Camera.main.transform))
                 if (detectedObjects != null && detectedObjects.Length != 0)// && detectedObjects.Length != created.Length) // надо будет исправить это для теста 
                 {
-                    Debug.Log($"Detected {detectedObjects.Length} objects");
-                    string[] label = objectToPrefabMap.Keys.ToArray();
+                    string[] labelArray = objectToPrefabMap.Keys.ToArray();
+                    
                     for (int i = 0; i < detectedObjects.Length; i++)
                     {
-                        if (!createdPrefab.Contains(objectToPrefabMap[label[detectedObjects[i].classID]]) || true)
-                        {
-                            var temp = Instantiate(objectToPrefabMap[label[detectedObjects[i].classID]], TransformPositionToNewCamera(detectedObjects[i].place, Camera.main.transform), Quaternion.identity);
-                            created.Add(temp);
-                            createdPrefab.Add(objectToPrefabMap[label[detectedObjects[i].classID]]);
+                        string label = labelArray[detectedObjects[i].classID];
+                        Vector3 newObjectPlace = TransformPositionToNewCamera(detectedObjects[i].place, Camera.main.transform);
 
-                        }     
+                        if (!created.ContainsKey(label))
+                        {
+                            var temp = Instantiate(objectToPrefabMap[label], newObjectPlace , Quaternion.identity);
+                            created.Add(label, temp);
+                            //created.Add(temp);
+                        }
+                        else if (Vector3.Distance(created[label].transform.position, newObjectPlace) > distForReplace)
+                        {
+                            Destroy(created[label]);
+                            created.Remove(label); 
+                            var temp = Instantiate(objectToPrefabMap[label], newObjectPlace, Quaternion.identity);
+                            created.Add(label, temp);
+                        }
                     }
                 }
             }
@@ -133,6 +144,8 @@ public class ImageTrackingHandler : MonoBehaviour
                 Debug.Log($"Skipping detection, latestImage or detectionScript not ready( {yolo.ready} )");
                 
             }
+            //if (created.Count>1) Debug.Log("pos: "+created["osci"].transform.position + " " + created["screen"].transform.position);
+            //if (created.Count>0) Debug.Log("pos: new: "+ TransformPositionToNewCamera(detectedObjects[0].place, Camera.main.transform) +"distance: " + Vector3.Distance(created["osci"].transform.position, TransformPositionToNewCamera(detectedObjects[0].place, Camera.main.transform)));
             await Task.Yield();
             await Task.Delay(1500);
         }
