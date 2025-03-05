@@ -3,7 +3,7 @@
     "m_SelectedProcess": {
         "deviceId": "RF8T201AGNK",
         "name": "com.chelilack.app",
-        "processId": 10775,
+        "processId": 1142,
         "exited": false
     },
     "m_SelectedPriority": 1,
@@ -11,31 +11,37 @@
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 21687,
+            "processId": 16061,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 7519,
+            "processId": 17268,
+            "exited": true
+        },
+        {
+            "deviceId": "RF8T201AGNK",
+            "name": "com.sec.android.app.launcher",
+            "processId": 2971,
+            "exited": false
+        },
+        {
+            "deviceId": "RF8T201AGNK",
+            "name": "com.chelilack.app",
+            "processId": 17697,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 8873,
+            "processId": 31392,
             "exited": true
         },
         {
             "deviceId": "RF8T201AGNK",
             "name": "com.chelilack.app",
-            "processId": 18895,
-            "exited": true
-        },
-        {
-            "deviceId": "RF8T201AGNK",
-            "name": "com.chelilack.app",
-            "processId": 10775,
+            "processId": 1142,
             "exited": false
         }
     ],
@@ -97,7 +103,7 @@
         "AutoCapture": true
     },
     "m_FilterOptions": {
-        "m_Filter": "",
+        "m_Filter": "camera pos",
         "m_UseRegularExpressions": false,
         "m_MatchCase": false
     },

@@ -23,7 +23,6 @@ public class Yolo : MonoBehaviour
     public bool finished = false;
     public Detection[] currentResult;
     public float imgSize;
-    public Camera cam;
     Model runtimeModel;
     Worker worker;
     Tensor<float> inputTensor;
@@ -40,6 +39,7 @@ public class Yolo : MonoBehaviour
     private CancellationTokenSource cts;
     async void Awake()
     {
+        var start = Time.realtimeSinceStartup;
         Debug.Log($"Main Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
         runtimeModel = await Task.Run(() =>
         {
@@ -49,9 +49,9 @@ public class Yolo : MonoBehaviour
         Debug.Log($"Back to Main Thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
         
         worker = new Worker(runtimeModel, BackendType.GPUCompute);
+        Debug.Log($"again load model {Time.realtimeSinceStartup - start}");
         ready = true;
         cts = new CancellationTokenSource();
-
         //var answer = Detect(example);
 
         //Tensor inputTensor = TransformInputToTensor(example);
@@ -66,9 +66,11 @@ public class Yolo : MonoBehaviour
 
 
     }
-    private async Task RunModelInference(Texture2D texture2D)
+    private async Task RunModelInference(ImageWithCamera imageWithCamera)
     {
         ready = false;
+        var texture2D = imageWithCamera.image;
+        var cam = imageWithCamera.oldCamera; 
         Debug.Log($"pos begin: {Camera.main.transform.position.ToString()}");
         inputTensor = TextureConverter.ToTensor(texture2D, (int)imgSize, (int)imgSize, 3);
         m_Schedule = worker.ScheduleIterable(inputTensor);
@@ -117,10 +119,6 @@ public class Yolo : MonoBehaviour
             .Select(k => cpuTensor[0, k, i])
             .Max();
 
-            //output += $" {cpuTensor[0, 5, i]},";
-            //if (cpuTensor[0, 4, i] > 0.5f) Debug.Log("wow" + cpuTensor[0, 4, i] + "i: "+ i);
-            //if (cpuTensor[0, 5, i] > 0.5f) Debug.Log("class 1 " + cpuTensor[0, 5, i] + " i: "+ i + " confidence: " + cpuTensor[0, 4, i]);
-            // Находим максимальное значение
 
             if (confidence > 0.9f)
             {
@@ -129,8 +127,6 @@ public class Yolo : MonoBehaviour
                 .ToList().IndexOf(confidence);
               
 
-                //Debug.Log("max class score: " + confidence);
-                //bestClassID = (confidence > 0.5f) ? bestClassID : 0;
                 Debug.Log($"Object detected with confidence {confidence}: " +
                           $"(x_center: {x_center}, y_center: {y_center}, width: {width}, height: {height}, classID: {bestClassID})\n " +
                           $"x_center: {cpuTensor[0, 0, i]}, y_center: {cpuTensor[0, 1, i]}, width: {cpuTensor[0, 2, i]}, height: {cpuTensor[0, 3, i]}");
@@ -169,13 +165,13 @@ public class Yolo : MonoBehaviour
         ready = true;
         finished = true;
     }
-    async public Task<Detection[]> Detect(Texture2D texture2D) 
+    async public Task<Detection[]> Detect(ImageWithCamera image) 
     {
         if (runtimeModel == null) return null;
         if (runtimeModel == null) Debug.Log("still no model :( ");
         if (worker == null) Debug.Log("still no worker :( ");
         if (worker == null) return null;
-        if (ready) await RunModelInference(texture2D);
+        if (ready) await RunModelInference(image);
         //while (!ready) {}
         //StopCoroutine(coroutine);
 

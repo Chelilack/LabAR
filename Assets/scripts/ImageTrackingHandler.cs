@@ -92,21 +92,20 @@ public class ImageTrackingHandler : MonoBehaviour
             //    await Task.Delay(100); // 
             //}
             //if ((latestCpuImage.valid || test) && yolo.ready)
-            ImageCameraTransform currentImage = frameUpdate.currentImage; // чтобы во время обработки изображение не поменялось 
+            ImageWithCamera currentImage = frameUpdate.currentImage; // чтобы во время обработки изображение не поменялось 
+
             if (test || (yolo.ready && currentImage.image != null))
             {
                 float start = Time.realtimeSinceStartup;
-                SaveCameraTransform(currentImage.cameraTransform);
+                //SaveCameraTransform(currentImage.cameraTransform);
                 latestImage = !test ? currentImage.image : example ;
-                Debug.Log($"texture2D {(float)Time.realtimeSinceStartup - start} sec");
-                if (latestImage.height < latestImage.width && !test) latestImage = Rotate90(latestImage);
-                Debug.Log($"height: {latestImage.height} width: {latestImage.width}");
+                if (currentImage.image.height < currentImage.image.width && !test) currentImage.image = Rotate90(currentImage.image);
                 //SaveTextureAsPNG(latestImage,"check");
                 if (created == null) Debug.Log("created=null");
 
                 float startTime = Time.realtimeSinceStartup;
 
-                detectedObjects = await yolo.Detect(latestImage);
+                detectedObjects = await yolo.Detect(currentImage);
 
 
                 Debug.Log($"Detect time: {Mathf.Abs(startTime - (float)Time.realtimeSinceStartup)}");
@@ -121,19 +120,18 @@ public class ImageTrackingHandler : MonoBehaviour
                     for (int i = 0; i < detectedObjects.Length; i++)
                     {
                         string label = labelArray[detectedObjects[i].classID];
-                        Vector3 newObjectPlace = TransformPositionToNewCamera(detectedObjects[i].place, Camera.main.transform);
 
                         if (!created.ContainsKey(label))
                         {
-                            var temp = Instantiate(objectToPrefabMap[label], newObjectPlace , Quaternion.identity);
+                            var temp = Instantiate(objectToPrefabMap[label], detectedObjects[i].place, Quaternion.identity);
                             created.Add(label, temp);
                             //created.Add(temp);
                         }
-                        else if (Vector3.Distance(created[label].transform.position, newObjectPlace) > distForReplace)
+                        else if (Vector3.Distance(created[label].transform.position, detectedObjects[i].place) > distForReplace)
                         {
                             Destroy(created[label]);
                             created.Remove(label); 
-                            var temp = Instantiate(objectToPrefabMap[label], newObjectPlace, Quaternion.identity);
+                            var temp = Instantiate(objectToPrefabMap[label], detectedObjects[i].place, Quaternion.identity);
                             created.Add(label, temp);
                         }
                     }
@@ -146,6 +144,8 @@ public class ImageTrackingHandler : MonoBehaviour
             }
             //if (created.Count>1) Debug.Log("pos: "+created["osci"].transform.position + " " + created["screen"].transform.position);
             //if (created.Count>0) Debug.Log("pos: new: "+ TransformPositionToNewCamera(detectedObjects[0].place, Camera.main.transform) +"distance: " + Vector3.Distance(created["osci"].transform.position, TransformPositionToNewCamera(detectedObjects[0].place, Camera.main.transform)));
+
+            Debug.Log($"mainCamera pos: {Camera.main.transform.position}");
             await Task.Yield();
             await Task.Delay(1500);
         }
@@ -175,6 +175,8 @@ public class ImageTrackingHandler : MonoBehaviour
         lastCameraPosition = cameraTransform.position;
         lastCameraRotation = cameraTransform.rotation;
     }
+
+
     public Vector3 TransformPositionToNewCamera(Vector3 originalPosition, Transform currentCameraTransform)
     {
         Vector3 currentCameraPosition = currentCameraTransform.position;

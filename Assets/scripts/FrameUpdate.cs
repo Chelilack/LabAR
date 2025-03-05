@@ -5,16 +5,16 @@ using TMPro;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using Unity.Collections;
-public struct ImageCameraTransform
+public struct ImageWithCamera
 {
     public Texture2D image;
-    public Transform cameraTransform;
+    public Camera oldCamera;
 }
 public class FrameUpdate : MonoBehaviour
 {
     [SerializeField] private ARCameraManager cameraManager;
     private Texture2D latestImage;
-    public ImageCameraTransform currentImage;
+    public ImageWithCamera currentImage;
     [SerializeField] private TMP_Text shake;
 
     public event Action<Texture2D> OnNewFrameReady; 
@@ -50,10 +50,10 @@ public class FrameUpdate : MonoBehaviour
             return;
 
         if (latestImage != null)
-            Destroy(latestImage); // Удаляем старое изображение
+            Destroy(latestImage);
 
         latestImage = ConvertImageToTexture2D(cpuImage);
-        currentImage = new ImageCameraTransform { image = latestImage, cameraTransform = Camera.main.transform };
+        currentImage = new ImageWithCamera { image = latestImage, oldCamera = CloneCamera(Camera.main) };
         cpuImage.Dispose();
 
         OnNewFrameReady?.Invoke(latestImage);// у него вообще есть подписчики????
@@ -89,5 +89,22 @@ public class FrameUpdate : MonoBehaviour
 
         rawTextureData.Dispose();
         return texture;
+    }
+    public Camera CloneCamera(Camera sourceCamera)
+    {
+        // Копируем параметры
+
+        // Можно скопировать и другие параметры, если надо
+        GameObject newCameraObject = new GameObject("ClonedCamera");
+        newCameraObject.SetActive(false);
+        Camera newCamera = newCameraObject.AddComponent<Camera>();
+        newCamera.transform.position = sourceCamera.transform.position;
+        newCamera.transform.rotation = sourceCamera.transform.rotation;
+        newCamera.fieldOfView = sourceCamera.fieldOfView;
+        newCamera.orthographicSize = sourceCamera.orthographicSize;
+        newCamera.orthographic = sourceCamera.orthographic;
+        newCamera.nearClipPlane = sourceCamera.nearClipPlane;
+        newCamera.farClipPlane = sourceCamera.farClipPlane;
+        return newCamera;
     }
 }
