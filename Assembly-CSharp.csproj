@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="Assets\ExampleAssets\Scripts\AnchorCreator.cs" />
     <Compile Include="Assets\ExampleAssets\Scripts\ARFeatheredPlaneMeshVisualizer.cs" />
+    <Compile Include="Assets\scripts\touchObject.cs" />
     <Compile Include="Assets\scripts\Yolo.cs" />
     <Compile Include="Assets\scripts\FrameUpdate.cs" />
     <Compile Include="Assets\scripts\ImageTrackingHandler.cs" />

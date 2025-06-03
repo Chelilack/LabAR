@@ -21,7 +21,8 @@ public class objectPrefab
 
 public class ImageTrackingHandler : MonoBehaviour
 {
-    private Dictionary<string, GameObject> objectToPrefabMap;
+    //private Dictionary<string, GameObject> objectToPrefabMap;
+    private List<LabelPrefabPair> prefabPairs;
     private ARTrackedImageManager _trackedImageManager;
 
     [SerializeField] private FrameUpdate frameUpdate;
@@ -72,8 +73,9 @@ public class ImageTrackingHandler : MonoBehaviour
 
     async void Start()
     {
-        objectToPrefabMap = FindAnyObjectByType<PrefabLabelMap>().labelToPrefab;
-        if (!yolo || !_trackedImageManager || objectToPrefabMap == null)
+        //objectToPrefabMap = FindAnyObjectByType<PrefabLabelMap>().labelToPrefab;
+        prefabPairs = FindAnyObjectByType<PrefabLabelMap>().LabelPrefabPairs;
+        if (!yolo || !_trackedImageManager || prefabPairs == null) //
         {
             Debug.LogError("smth wrong");
         }
@@ -115,26 +117,35 @@ public class ImageTrackingHandler : MonoBehaviour
                 // Vector3.Distance(created[0].transform.position, TransformPositionToNewCamera(detectedObjects[0].place, Camera.main.transform))
                 if (detectedObjects != null && detectedObjects.Length != 0)// && detectedObjects.Length != created.Length) // надо будет исправить это для теста 
                 {
-                    string[] labelArray = objectToPrefabMap.Keys.ToArray();
-                    
+                    //string[] labelArray = objectToPrefabMap.Keys.ToArray();
+
                     for (int i = 0; i < detectedObjects.Length; i++)
                     {
-                        string label = labelArray[detectedObjects[i].classID];
+                        int classId = detectedObjects[i].classID;
+
+                        if (classId < 0 || classId >= prefabPairs.Count)
+                            continue;
+
+                        LabelPrefabPair pair = prefabPairs[classId];
+                        string label = pair.Label;
 
                         if (!created.ContainsKey(label))
                         {
-                            var temp = Instantiate(objectToPrefabMap[label], detectedObjects[i].place, Quaternion.identity);
+                            var temp = Instantiate(pair.Prefab, detectedObjects[i].place, Quaternion.identity);
                             created.Add(label, temp);
-                            //created.Add(temp);
                         }
                         else if (Vector3.Distance(created[label].transform.position, detectedObjects[i].place) > distForReplace)
                         {
                             Destroy(created[label]);
-                            created.Remove(label); 
-                            var temp = Instantiate(objectToPrefabMap[label], detectedObjects[i].place, Quaternion.identity);
+                            created.Remove(label);
+                            var temp = Instantiate(pair.Prefab, detectedObjects[i].place, Quaternion.identity);
                             created.Add(label, temp);
                         }
+
+                        // Если нужно выводить подсказку:
+                        //Debug.Log($"Advice: {pair.Advice}");
                     }
+
                 }
             }
             else

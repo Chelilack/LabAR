@@ -15,7 +15,6 @@ public class FrameUpdate : MonoBehaviour
     [SerializeField] private ARCameraManager cameraManager;
     private Texture2D latestImage;
     public ImageWithCamera currentImage;
-    [SerializeField] private TMP_Text shake;
 
     public event Action<Texture2D> OnNewFrameReady; 
 
@@ -38,7 +37,7 @@ public class FrameUpdate : MonoBehaviour
     {
         Vector3 acceleration = Input.acceleration;
         float shakeMagnitude = acceleration.magnitude;
-        shake.text = "shake: " + shakeMagnitude.ToString() + "\n" + Camera.main.transform.position.ToString();
+        //shake.text = "shake: " + shakeMagnitude.ToString() + "\n" + Camera.main.transform.position.ToString();
         //if (shakeMagnitude > 2.0f) // Порог чувствительности
         //{
              
@@ -56,7 +55,7 @@ public class FrameUpdate : MonoBehaviour
         currentImage = new ImageWithCamera { image = latestImage, oldCamera = CloneCamera(Camera.main) };
         cpuImage.Dispose();
 
-        OnNewFrameReady?.Invoke(latestImage);// у него вообще есть подписчики????
+        OnNewFrameReady?.Invoke(latestImage);
     }
 
     private Texture2D ConvertImageToTexture2D(XRCpuImage image)

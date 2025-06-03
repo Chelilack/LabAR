@@ -75,7 +75,6 @@ public class Yolo : MonoBehaviour
         inputTensor = TextureConverter.ToTensor(texture2D, (int)imgSize, (int)imgSize, 3);
         m_Schedule = worker.ScheduleIterable(inputTensor);
         float start = Time.realtimeSinceStartup;
-        //worker.Schedule(inputTensor);
 
         int it = 0;
         while (m_Schedule.MoveNext()) 
